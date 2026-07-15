@@ -44,16 +44,6 @@ export default function SuiviScreen() {
     onError: (err) => Alert.alert('Erreur', extractErrorMessage(err, "Impossible d'envoyer le signal")),
   });
 
-  if (!activeTrip) {
-    return (
-      <ScreenContainer style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center' }}>
-          Aucun trajet en cours pour le moment.{'\n'}Le suivi apparaît dès que votre bus démarre sa tournée.
-        </ThemedText>
-      </ScreenContainer>
-    );
-  }
-
   const center = position ? { latitude: position.latitude, longitude: position.longitude } : YAOUNDE_CENTER;
 
   return (
@@ -63,27 +53,35 @@ export default function SuiviScreen() {
         initialRegion={{ ...center, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
         region={position ? { ...center, latitudeDelta: 0.05, longitudeDelta: 0.05 } : undefined}
       >
-        {position && (
+        {position && activeTrip && (
           <Marker coordinate={{ latitude: position.latitude, longitude: position.longitude }} title={activeTrip.busPlateNumber} />
         )}
       </MapView>
 
-      <View style={styles.banner}>
-        <ThemedText type="smallBold">{activeTrip.routeName}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Bus {activeTrip.busPlateNumber} · {activeTrip.driverName}
-          {position?.speedKmh != null ? ` · ${position.speedKmh.toFixed(0)} km/h` : ''}
-        </ThemedText>
-        <Pressable
-          disabled={hailMutation.isPending || hailed}
-          onPress={() => hailMutation.mutate(activeTrip.id)}
-          style={[styles.hailButton, { backgroundColor: hailed ? theme.border : theme.primary }]}
-        >
-          <ThemedText style={{ color: hailed ? theme.textSecondary : theme.primaryForeground, fontWeight: '700' }}>
-            {hailed ? 'Signal envoyé' : 'Signaler mon arrêt'}
+      {activeTrip ? (
+        <View style={styles.banner}>
+          <ThemedText type="smallBold">{activeTrip.routeName}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Bus {activeTrip.busPlateNumber} · {activeTrip.driverName}
+            {position?.speedKmh != null ? ` · ${position.speedKmh.toFixed(0)} km/h` : ''}
           </ThemedText>
-        </Pressable>
-      </View>
+          <Pressable
+            disabled={hailMutation.isPending || hailed}
+            onPress={() => hailMutation.mutate(activeTrip.id)}
+            style={[styles.hailButton, { backgroundColor: hailed ? theme.border : theme.primary }]}
+          >
+            <ThemedText style={{ color: hailed ? theme.textSecondary : theme.primaryForeground, fontWeight: '700' }}>
+              {hailed ? 'Signal envoyé' : 'Signaler mon arrêt'}
+            </ThemedText>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.banner}>
+          <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center' }}>
+            Aucun trajet en cours pour le moment.{'\n'}Le suivi en direct apparaît dès que votre bus démarre sa tournée.
+          </ThemedText>
+        </View>
+      )}
     </View>
   );
 }
