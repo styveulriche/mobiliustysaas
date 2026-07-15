@@ -19,6 +19,10 @@ export default function DriverTabsLayout() {
         options={{ title: 'Ma tournée', tabBarIcon: ({ color, size }) => <Ionicons name="bus-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
+        name="carte"
+        options={{ title: 'Carte', tabBarIcon: ({ color, size }) => <Ionicons name="map-outline" size={size} color={color} /> }}
+      />
+      <Tabs.Screen
         name="scanner"
         options={{ title: 'Scanner', tabBarIcon: ({ color, size }) => <Ionicons name="qr-code-outline" size={size} color={color} /> }}
       />
