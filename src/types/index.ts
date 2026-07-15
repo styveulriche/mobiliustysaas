@@ -113,6 +113,30 @@ export interface HailEvent {
   sentAt: string
 }
 
+export interface StopDto {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+  wheelchairAccessible: boolean
+}
+
+export type ProximityStatus = 'NOT_STARTED' | 'APPROACHING' | 'AT_STOP' | 'PASSED'
+
+export interface BusProximity {
+  tripId: string
+  routeId: string
+  routeName: string
+  busId: string
+  busPlateNumber: string
+  driverName: string
+  tripStatus: TripStatus
+  proximityStatus: ProximityStatus
+  stopsAway: number | null
+  distanceMeters: number | null
+  lastPositionAt: string | null
+}
+
 export interface ApiError {
   timestamp: string
   status: number

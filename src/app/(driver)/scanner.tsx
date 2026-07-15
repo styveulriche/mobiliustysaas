@@ -1,104 +1,99 @@
-import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
-import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import QRCode from 'react-native-qrcode-svg';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
-import { api, extractErrorMessage } from '@/lib/api';
-import type { Reservation } from '@/types';
+import { api, API_BASE_URL } from '@/lib/api';
+import { useAuthStore } from '@/store/auth-store';
+import type { Trip } from '@/types';
 
-export default function ScannerScreen() {
+export default function BoardingQrScreen() {
   const theme = useTheme();
-  const [permission, requestPermission] = useCameraPermissions();
-  const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
-  const busyRef = useRef(false);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [downloading, setDownloading] = useState(false);
 
-  const validateMutation = useMutation({
-    mutationFn: async (qrCode: string) => (await api.post<Reservation>('/reservations/validate-qr', { qrCode })).data,
-    onSuccess: (reservation) => {
-      setFeedback({ ok: true, text: `${reservation.studentName} — ${reservation.boardingStopName} → ${reservation.alightingStopName}` });
-    },
-    onError: (err) => setFeedback({ ok: false, text: extractErrorMessage(err, 'QR code invalide ou déjà utilisé') }),
-    onSettled: () => {
-      setTimeout(() => {
-        busyRef.current = false;
-      }, 2000);
-    },
+  const { data: trips } = useQuery({
+    queryKey: ['trips', 'mine'],
+    queryFn: async () => (await api.get<Trip[]>('/trips')).data,
+  });
+  const activeTrip = trips?.find((t) => t.status === 'IN_PROGRESS') ?? trips?.find((t) => t.status === 'PLANNED') ?? null;
+
+  const { data: boardingCode, isLoading } = useQuery({
+    queryKey: ['boarding-code', activeTrip?.id],
+    queryFn: async () =>
+      (await api.get<{ tripId: string; code: string }>(`/trips/${activeTrip!.id}/boarding-code`)).data.code,
+    enabled: !!activeTrip,
   });
 
-  function onScan(result: BarcodeScanningResult) {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    setFeedback(null);
-    validateMutation.mutate(result.data);
+  async function downloadPdf() {
+    if (!activeTrip) return;
+    setDownloading(true);
+    try {
+      const fileUri = FileSystem.documentDirectory + `tournee-${activeTrip.busPlateNumber}.pdf`;
+      const result = await FileSystem.downloadAsync(
+        `${API_BASE_URL}/trips/${activeTrip.id}/boarding-pass.pdf`,
+        fileUri,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf' });
+      } else {
+        Alert.alert('PDF téléchargé', result.uri);
+      }
+    } catch {
+      Alert.alert('Erreur', 'Impossible de télécharger le PDF');
+    } finally {
+      setDownloading(false);
+    }
   }
 
-  if (!permission) {
-    return <ThemedView style={{ flex: 1 }} />;
-  }
-
-  if (!permission.granted) {
+  if (!activeTrip) {
     return (
-      <ThemedView style={styles.centered}>
-        <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', marginBottom: Spacing.three }}>
-          L'accès à la caméra est nécessaire pour scanner les QR codes des étudiants
+      <ScreenContainer style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center' }}>
+          Aucune tournée assignée pour le moment.
         </ThemedText>
-        <Pressable onPress={requestPermission} style={[styles.button, { backgroundColor: theme.primary }]}>
-          <ThemedText style={{ color: theme.primaryForeground, fontWeight: '700' }}>Autoriser la caméra</ThemedText>
-        </Pressable>
-      </ThemedView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <View style={styles.flex}>
-      <CameraView
-        style={styles.flex}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-        onBarcodeScanned={onScan}
-      />
-      <View style={styles.overlay}>
-        <View style={[styles.frame, { borderColor: theme.primary }]} />
-        <ThemedText type="small" style={{ color: '#fff', textAlign: 'center', marginTop: Spacing.three }}>
-          Placez le QR code de l'étudiant dans le cadre
-        </ThemedText>
+    <ScreenContainer style={{ alignItems: 'center', justifyContent: 'center', gap: Spacing.four }}>
+      <ThemedText type="title" style={{ fontSize: 22, lineHeight: 28, textAlign: 'center' }}>
+        {activeTrip.routeName}
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        Bus {activeTrip.busPlateNumber}
+      </ThemedText>
+
+      <View style={[styles.qrBox, { backgroundColor: '#ffffff' }]}>
+        {isLoading || !boardingCode ? <ActivityIndicator /> : <QRCode value={boardingCode} size={220} />}
       </View>
 
-      {feedback && (
-        <View
-          style={[
-            styles.feedback,
-            { backgroundColor: feedback.ok ? theme.success : theme.destructive },
-          ]}
-        >
-          <ThemedText style={{ color: '#fff', fontWeight: '700', textAlign: 'center' }}>
-            {feedback.ok ? 'Embarquement validé' : 'Échec de la validation'}
-          </ThemedText>
-          <ThemedText type="small" style={{ color: '#ffffffdd', textAlign: 'center' }}>
-            {feedback.text}
-          </ThemedText>
-        </View>
-      )}
-    </View>
+      <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', maxWidth: 280 }}>
+        Chaque étudiant scanne ce code pour valider sa présence à bord. Téléchargez le PDF pour l'imprimer et le
+        coller à l'entrée du bus.
+      </ThemedText>
+
+      <Pressable
+        onPress={downloadPdf}
+        disabled={downloading}
+        style={[styles.button, { backgroundColor: theme.primary, opacity: downloading ? 0.7 : 1 }]}
+      >
+        <ThemedText style={{ color: theme.primaryForeground, fontWeight: '700' }}>
+          {downloading ? 'Téléchargement…' : 'Télécharger le PDF'}
+        </ThemedText>
+      </Pressable>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
-  button: { borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12 },
-  overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
-  frame: { width: 240, height: 240, borderWidth: 3, borderRadius: 20 },
-  feedback: {
-    position: 'absolute',
-    left: Spacing.three,
-    right: Spacing.three,
-    bottom: Spacing.four,
-    borderRadius: 14,
-    padding: Spacing.three,
-    gap: 4,
-  },
+  qrBox: { padding: Spacing.four, borderRadius: 20 },
+  button: { borderRadius: 12, paddingHorizontal: 20, paddingVertical: 14 },
 });

@@ -19,12 +19,20 @@ export default function StudentTabsLayout() {
         options={{ title: 'Horaires', tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
+        name="itineraires"
+        options={{ title: 'Itinéraires', tabBarIcon: ({ color, size }) => <Ionicons name="search-outline" size={size} color={color} /> }}
+      />
+      <Tabs.Screen
         name="reservations"
         options={{ title: 'Réservations', tabBarIcon: ({ color, size }) => <Ionicons name="ticket-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="suivi"
         options={{ title: 'Suivi', tabBarIcon: ({ color, size }) => <Ionicons name="bus-outline" size={size} color={color} /> }}
+      />
+      <Tabs.Screen
+        name="scanner"
+        options={{ title: 'Scanner', tabBarIcon: ({ color, size }) => <Ionicons name="qr-code-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="notifications"

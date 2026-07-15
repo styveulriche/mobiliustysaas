@@ -15,6 +15,8 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
+          <Stack.Screen name="signup" />
+          <Stack.Screen name="verify-otp" />
           <Stack.Screen name="(student)" />
           <Stack.Screen name="(driver)" />
         </Stack>

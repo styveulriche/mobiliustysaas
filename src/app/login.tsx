@@ -114,6 +114,12 @@ export default function LoginScreen() {
               <ThemedText style={{ color: theme.primaryForeground, fontWeight: '700' }}>Se connecter</ThemedText>
             )}
           </Pressable>
+
+          <Pressable onPress={() => router.push('/signup' as never)} style={{ alignItems: 'center', marginTop: Spacing.three }}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Pas encore de compte ? <ThemedText type="smallBold">S'inscrire</ThemedText>
+            </ThemedText>
+          </Pressable>
         </View>
       </ScrollView>
       </KeyboardAvoidingView>

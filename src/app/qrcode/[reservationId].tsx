@@ -2,7 +2,6 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import QRCode from 'react-native-qrcode-svg';
 import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -48,12 +47,9 @@ export default function QrCodeScreen() {
             {reservation.boardingStopName} → {reservation.alightingStopName}
           </ThemedText>
 
-          <View style={{ padding: Spacing.four, backgroundColor: '#ffffff', borderRadius: 20 }}>
-            <QRCode value={reservation.qrCode} size={220} />
-          </View>
-
-          <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', maxWidth: 260 }}>
-            Présentez ce code au chauffeur pour valider votre embarquement
+          <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', maxWidth: 280 }}>
+            Votre place est réservée. Pour valider votre présence à bord, scannez le QR code affiché à l'entrée
+            du bus depuis l'onglet "Scanner".
           </ThemedText>
         </View>
       )}

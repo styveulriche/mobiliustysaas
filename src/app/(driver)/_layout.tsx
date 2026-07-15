@@ -24,7 +24,7 @@ export default function DriverTabsLayout() {
       />
       <Tabs.Screen
         name="scanner"
-        options={{ title: 'Scanner', tabBarIcon: ({ color, size }) => <Ionicons name="qr-code-outline" size={size} color={color} /> }}
+        options={{ title: 'Mon QR', tabBarIcon: ({ color, size }) => <Ionicons name="qr-code-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="incident"
