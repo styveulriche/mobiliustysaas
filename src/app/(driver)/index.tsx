@@ -10,6 +10,7 @@ import { StatusBadge, type BadgeTone } from '@/components/status-badge';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useTripHail } from '@/lib/ws';
 import type { Trip, TripStatus } from '@/types';
 
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -91,6 +92,11 @@ export default function MaTourneeScreen() {
   }, [trips]);
 
   useEffect(() => () => void stopTracking(), []);
+
+  const inProgressTripId = trips?.find((t) => t.status === 'IN_PROGRESS')?.id ?? null;
+  useTripHail(inProgressTripId, (event) => {
+    Alert.alert('Un étudiant signale son arrêt', `${event.studentName} souhaite s'arrêter à ${event.stopName}.`);
+  });
 
   const todayTrips = (trips ?? [])
     .filter((t) => t.status !== 'CANCELLED')

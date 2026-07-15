@@ -1,17 +1,20 @@
-import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
-import { api } from '@/lib/api';
+import { api, extractErrorMessage } from '@/lib/api';
 import { useTripPosition } from '@/lib/ws';
 import type { Reservation, Trip } from '@/types';
 
 const YAOUNDE_CENTER = { latitude: 3.848, longitude: 11.502 };
 
 export default function SuiviScreen() {
+  const theme = useTheme();
+  const [hailed, setHailed] = useState(false);
   const { data: reservations } = useQuery({
     queryKey: ['reservations', 'mine'],
     queryFn: async () => (await api.get<Reservation[]>('/reservations/mine')).data,
@@ -31,6 +34,15 @@ export default function SuiviScreen() {
   }, [reservations, trips]);
 
   const position = useTripPosition(activeTrip?.id ?? null);
+
+  const hailMutation = useMutation({
+    mutationFn: async (tripId: string) => api.post(`/trips/${tripId}/hail`),
+    onSuccess: () => {
+      setHailed(true);
+      Alert.alert('Signal envoyé', 'Le chauffeur a été prévenu que vous souhaitez vous arrêter.');
+    },
+    onError: (err) => Alert.alert('Erreur', extractErrorMessage(err, "Impossible d'envoyer le signal")),
+  });
 
   if (!activeTrip) {
     return (
@@ -62,6 +74,15 @@ export default function SuiviScreen() {
           Bus {activeTrip.busPlateNumber} · {activeTrip.driverName}
           {position?.speedKmh != null ? ` · ${position.speedKmh.toFixed(0)} km/h` : ''}
         </ThemedText>
+        <Pressable
+          disabled={hailMutation.isPending || hailed}
+          onPress={() => hailMutation.mutate(activeTrip.id)}
+          style={[styles.hailButton, { backgroundColor: hailed ? theme.border : theme.primary }]}
+        >
+          <ThemedText style={{ color: hailed ? theme.textSecondary : theme.primaryForeground, fontWeight: '700' }}>
+            {hailed ? 'Signal envoyé' : 'Signaler mon arrêt'}
+          </ThemedText>
+        </Pressable>
       </View>
     </View>
   );
@@ -78,5 +99,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: Spacing.three,
     gap: 2,
+  },
+  hailButton: {
+    marginTop: Spacing.two,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
   },
 });

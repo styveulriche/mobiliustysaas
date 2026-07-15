@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Client } from '@stomp/stompjs'
 import { API_BASE_URL } from '@/lib/api'
-import type { BusPosition } from '@/types'
+import type { BusPosition, HailEvent } from '@/types'
 
 // Native clients skip SockJS entirely and speak STOMP over a plain WebSocket —
 // see backend WebSocketConfig's `/ws-native` endpoint (registered alongside the
@@ -56,4 +56,25 @@ export function useTripPosition(tripId: string | null) {
   }, [tripId])
 
   return position
+}
+
+/** Subscribes to real-time "student wants to stop here" signals for a trip (driver side). */
+export function useTripHail(tripId: string | null, onHail: (event: HailEvent) => void) {
+  useEffect(() => {
+    if (!tripId) return
+    const client = new Client({
+      brokerURL: WS_URL,
+      reconnectDelay: 4000,
+      onConnect: () => {
+        client.subscribe(`/topic/trips/${tripId}/hail`, (message) => {
+          onHail(JSON.parse(message.body) as HailEvent)
+        })
+      },
+    })
+    client.activate()
+    return () => {
+      client.deactivate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId])
 }

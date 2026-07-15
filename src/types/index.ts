@@ -106,6 +106,13 @@ export interface BusPosition {
   recordedAt: string
 }
 
+export interface HailEvent {
+  tripId: string
+  studentName: string
+  stopName: string
+  sentAt: string
+}
+
 export interface ApiError {
   timestamp: string
   status: number
