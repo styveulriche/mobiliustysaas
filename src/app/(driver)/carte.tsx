@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useQuery } from '@tanstack/react-query';
+import { LeafletMapView, type LeafletMarker } from '@/components/leaflet-map';
 import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -48,26 +48,20 @@ export default function CarteScreen() {
       ? { latitude: stopsSorted[0].latitude, longitude: stopsSorted[0].longitude }
       : YAOUNDE_CENTER;
 
+  const markers: LeafletMarker[] = [
+    ...stopsSorted.map((s) => ({ id: s.stopId, latitude: s.latitude, longitude: s.longitude, title: s.stopName, color: '#f59e0b' })),
+    ...(position ? [{ id: 'bus', latitude: position.latitude, longitude: position.longitude, title: activeTrip.busPlateNumber, color: '#208AEF' }] : []),
+  ];
+
   return (
     <View style={styles.flex}>
-      <MapView style={styles.flex} initialRegion={{ ...center, latitudeDelta: 0.08, longitudeDelta: 0.08 }}>
-        {stopsSorted.length > 1 && (
-          <Polyline
-            coordinates={stopsSorted.map((s) => ({ latitude: s.latitude, longitude: s.longitude }))}
-            strokeWidth={4}
-          />
-        )}
-        {stopsSorted.map((s) => (
-          <Marker key={s.stopId} coordinate={{ latitude: s.latitude, longitude: s.longitude }} title={s.stopName} pinColor="orange" />
-        ))}
-        {position && (
-          <Marker
-            coordinate={{ latitude: position.latitude, longitude: position.longitude }}
-            title={activeTrip.busPlateNumber}
-            pinColor="#208AEF"
-          />
-        )}
-      </MapView>
+      <LeafletMapView
+        style={styles.flex}
+        center={center}
+        zoom={13}
+        markers={markers}
+        polyline={stopsSorted.map((s) => ({ latitude: s.latitude, longitude: s.longitude }))}
+      />
 
       <View style={styles.banner}>
         <ThemedText type="smallBold">{activeTrip.routeName}</ThemedText>

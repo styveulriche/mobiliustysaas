@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ScreenContainer } from '@/components/screen-container';
+import { LeafletMapView } from '@/components/leaflet-map';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
@@ -48,15 +47,16 @@ export default function SuiviScreen() {
 
   return (
     <View style={styles.flex}>
-      <MapView
+      <LeafletMapView
         style={styles.flex}
-        initialRegion={{ ...center, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
-        region={position ? { ...center, latitudeDelta: 0.05, longitudeDelta: 0.05 } : undefined}
-      >
-        {position && activeTrip && (
-          <Marker coordinate={{ latitude: position.latitude, longitude: position.longitude }} title={activeTrip.busPlateNumber} />
-        )}
-      </MapView>
+        center={center}
+        zoom={15}
+        markers={
+          position && activeTrip
+            ? [{ id: 'bus', latitude: position.latitude, longitude: position.longitude, title: activeTrip.busPlateNumber }]
+            : []
+        }
+      />
 
       {activeTrip ? (
         <View style={styles.banner}>

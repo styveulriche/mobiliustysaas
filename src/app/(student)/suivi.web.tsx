@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 
-// react-native-maps has no web target — the live map only renders on iOS/Android.
+// react-native-webview has no web target — the live map only renders on iOS/Android.
 export default function SuiviWebScreen() {
   const theme = useTheme();
   return (
