@@ -1,17 +1,21 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { LeafletMapView, type LeafletMarker } from '@/components/leaflet-map';
+import { LeafletMapView, type LeafletMarker, type MapType } from '@/components/leaflet-map';
+import { MapTypeToggle } from '@/components/map-type-toggle';
 import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { splitRouteProgress } from '@/lib/geo';
 import { useTripPosition } from '@/lib/ws';
 import type { RouteDto, Trip } from '@/types';
 
 const YAOUNDE_CENTER = { latitude: 3.848, longitude: 11.502 };
 
 export default function CarteScreen() {
+  const [mapType, setMapType] = useState<MapType>('street');
+
   const { data: trips } = useQuery({
     queryKey: ['trips', 'mine'],
     queryFn: async () => (await api.get<Trip[]>('/trips')).data,
@@ -42,15 +46,15 @@ export default function CarteScreen() {
   }
 
   const stopsSorted = (route?.stops ?? []).slice().sort((a, b) => a.sequenceOrder - b.sequenceOrder);
-  const center = position
-    ? { latitude: position.latitude, longitude: position.longitude }
-    : stopsSorted[0]
-      ? { latitude: stopsSorted[0].latitude, longitude: stopsSorted[0].longitude }
-      : YAOUNDE_CENTER;
+  const busPosition = position ? { latitude: position.latitude, longitude: position.longitude } : null;
+  const center = busPosition ?? (stopsSorted[0] ? { latitude: stopsSorted[0].latitude, longitude: stopsSorted[0].longitude } : YAOUNDE_CENTER);
+  const { traveled, remaining } = splitRouteProgress(stopsSorted, busPosition);
 
   const markers: LeafletMarker[] = [
     ...stopsSorted.map((s) => ({ id: s.stopId, latitude: s.latitude, longitude: s.longitude, title: s.stopName, color: '#f59e0b' })),
-    ...(position ? [{ id: 'bus', latitude: position.latitude, longitude: position.longitude, title: activeTrip.busPlateNumber, color: '#208AEF' }] : []),
+    ...(position
+      ? [{ id: 'bus', latitude: position.latitude, longitude: position.longitude, title: activeTrip.busPlateNumber, variant: 'bus' as const, heading: position.heading }]
+      : []),
   ];
 
   return (
@@ -59,15 +63,19 @@ export default function CarteScreen() {
         style={styles.flex}
         center={center}
         zoom={13}
+        mapType={mapType}
         markers={markers}
-        polyline={stopsSorted.map((s) => ({ latitude: s.latitude, longitude: s.longitude }))}
+        traveledPolyline={traveled}
+        remainingPolyline={remaining}
       />
+      <MapTypeToggle mapType={mapType} onChange={setMapType} />
 
       <View style={styles.banner}>
         <ThemedText type="smallBold">{activeTrip.routeName}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           Bus {activeTrip.busPlateNumber}
           {position?.speedKmh != null ? ` · ${position.speedKmh.toFixed(0)} km/h` : ''}
+          {position?.distanceTraveledKm != null ? ` · ${position.distanceTraveledKm.toFixed(1)} km parcourus` : ''}
         </ThemedText>
       </View>
     </View>

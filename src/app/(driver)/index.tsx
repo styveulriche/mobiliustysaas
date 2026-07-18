@@ -73,6 +73,7 @@ export default function MaTourneeScreen() {
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
             speedKmh: loc.coords.speed != null ? loc.coords.speed * 3.6 : null,
+            heading: loc.coords.heading != null && loc.coords.heading >= 0 ? loc.coords.heading : null,
           })
           .catch(() => {});
       },

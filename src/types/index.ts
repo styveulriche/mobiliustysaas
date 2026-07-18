@@ -103,6 +103,8 @@ export interface BusPosition {
   latitude: number
   longitude: number
   speedKmh: number | null
+  heading: number | null
+  distanceTraveledKm: number
   recordedAt: string
 }
 

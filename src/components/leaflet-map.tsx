@@ -2,31 +2,65 @@ import { useMemo } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+export type MapType = 'street' | 'satellite';
+
 export interface LeafletMarker {
   id: string;
   latitude: number;
   longitude: number;
   title?: string;
   color?: string;
+  heading?: number | null;
+  variant?: 'bus' | 'user';
+}
+
+interface LatLng {
+  latitude: number;
+  longitude: number;
 }
 
 interface LeafletMapViewProps {
-  center: { latitude: number; longitude: number };
+  center: LatLng;
   zoom?: number;
+  mapType?: MapType;
   markers?: LeafletMarker[];
-  polyline?: { latitude: number; longitude: number }[];
+  /** Portion of the route already covered by the bus — rendered dimmed. */
+  traveledPolyline?: LatLng[];
+  /** Portion of the route still ahead — rendered as the live route highlight. */
+  remainingPolyline?: LatLng[];
   style?: ViewStyle;
 }
 
+const TILE_URLS: Record<MapType, string> = {
+  street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+};
+
 /**
- * Open-source map (Leaflet + OpenStreetMap tiles) rendered in a WebView — the same stack
+ * Open-source map (Leaflet + OpenStreetMap/Esri tiles) rendered in a WebView — the same stack
  * used on the web dashboard. Avoids requiring a Google Maps API key for the Android build.
  */
-export function LeafletMapView({ center, zoom = 14, markers = [], polyline = [], style }: LeafletMapViewProps) {
+export function LeafletMapView({
+  center,
+  zoom = 14,
+  mapType = 'street',
+  markers = [],
+  traveledPolyline = [],
+  remainingPolyline = [],
+  style,
+}: LeafletMapViewProps) {
   const html = useMemo(
-    () => buildHtml(center, zoom, markers, polyline),
+    () => buildHtml(center, zoom, mapType, markers, traveledPolyline, remainingPolyline),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [center.latitude, center.longitude, zoom, JSON.stringify(markers), JSON.stringify(polyline)],
+    [
+      center.latitude,
+      center.longitude,
+      zoom,
+      mapType,
+      JSON.stringify(markers),
+      JSON.stringify(traveledPolyline),
+      JSON.stringify(remainingPolyline),
+    ],
   );
 
   return (
@@ -44,22 +78,43 @@ export function LeafletMapView({ center, zoom = 14, markers = [], polyline = [],
 }
 
 function buildHtml(
-  center: { latitude: number; longitude: number },
+  center: LatLng,
   zoom: number,
+  mapType: MapType,
   markers: LeafletMarker[],
-  polyline: { latitude: number; longitude: number }[],
+  traveledPolyline: LatLng[],
+  remainingPolyline: LatLng[],
 ) {
   const markersJs = markers
-    .map(
-      (m) => `
+    .map((m) => {
+      if (m.heading != null || m.variant) {
+        const color = m.color ?? (m.variant === 'user' ? '#2563eb' : '#208AEF');
+        const rotation = m.heading ?? 0;
+        return `
+    L.marker([${m.latitude}, ${m.longitude}], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="transform: rotate(${rotation}deg); width: 26px; height: 26px; display:flex; align-items:center; justify-content:center;">' +
+          '<svg width="26" height="26" viewBox="0 0 24 24"><path d="M12 2 L20 20 L12 16 L4 20 Z" fill="${color}" stroke="#ffffff" stroke-width="1.5"/></svg></div>',
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      }),
+    }).addTo(map)${m.title ? `.bindPopup(${JSON.stringify(m.title)})` : ''};`;
+      }
+      return `
     L.circleMarker([${m.latitude}, ${m.longitude}], { radius: 9, color: '${m.color ?? '#208AEF'}', fillColor: '${m.color ?? '#208AEF'}', fillOpacity: 1, weight: 2 })
-      .addTo(map)${m.title ? `.bindPopup(${JSON.stringify(m.title)})` : ''};`,
-    )
+      .addTo(map)${m.title ? `.bindPopup(${JSON.stringify(m.title)})` : ''};`;
+    })
     .join('\n');
 
-  const polylineJs =
-    polyline.length > 1
-      ? `L.polyline(${JSON.stringify(polyline.map((p) => [p.latitude, p.longitude]))}, { color: '#208AEF', weight: 4 }).addTo(map);`
+  const traveledJs =
+    traveledPolyline.length > 1
+      ? `L.polyline(${JSON.stringify(traveledPolyline.map((p) => [p.latitude, p.longitude]))}, { color: '#94a3b8', weight: 4 }).addTo(map);`
+      : '';
+
+  const remainingJs =
+    remainingPolyline.length > 1
+      ? `L.polyline(${JSON.stringify(remainingPolyline.map((p) => [p.latitude, p.longitude]))}, { color: '#208AEF', weight: 4 }).addTo(map);`
       : '';
 
   return `<!DOCTYPE html>
@@ -75,8 +130,9 @@ function buildHtml(
   <script>
     var map = L.map('map', { zoomControl: false, attributionControl: false })
       .setView([${center.latitude}, ${center.longitude}], ${zoom});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    ${polylineJs}
+    L.tileLayer('${TILE_URLS[mapType]}', { maxZoom: 19 }).addTo(map);
+    ${traveledJs}
+    ${remainingJs}
     ${markersJs}
   </script>
 </body>
