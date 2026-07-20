@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,12 +17,14 @@ import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { api, extractErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
+import { useTenantBrandStore } from '@/store/tenant-brand-store';
 import type { AuthResponse } from '@/types';
 
 export default function LoginScreen() {
   const theme = useTheme();
   const setSession = useAuthStore((s) => s.setSession);
   const tenantCode = useAuthStore((s) => s.tenantCode);
+  const branding = useTenantBrandStore((s) => s.branding);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,14 +64,20 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={[styles.logo, { backgroundColor: theme.primary }]}>
-          <ThemedText style={{ color: theme.primaryForeground, fontSize: 28, fontWeight: '800' }}>IB</ThemedText>
-        </View>
+        {branding?.logoUrl ? (
+          <Image source={{ uri: branding.logoUrl }} style={styles.logoImage} />
+        ) : (
+          <View style={[styles.logo, { backgroundColor: theme.primary }]}>
+            <ThemedText style={{ color: theme.primaryForeground, fontSize: 28, fontWeight: '800' }}>
+              {(branding?.name ?? 'IUSTY BUS').slice(0, 2).toUpperCase()}
+            </ThemedText>
+          </View>
+        )}
         <ThemedText type="title" style={styles.title}>
-          IUSTY BUS
+          {branding?.name ?? 'IUSTY BUS'}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-          Connectez-vous pour suivre votre transport universitaire
+          {branding?.tagline ?? 'Connectez-vous pour suivre votre transport universitaire'}
         </ThemedText>
 
         <View style={styles.form}>
@@ -137,6 +146,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.three,
+  },
+  logoImage: {
+    alignSelf: 'center',
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     marginBottom: Spacing.three,
   },
   title: { textAlign: 'center', fontSize: 28, lineHeight: 34 },

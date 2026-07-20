@@ -139,6 +139,14 @@ export interface BusProximity {
   lastPositionAt: string | null
 }
 
+export interface TenantPublic {
+  name: string
+  code: string
+  logoUrl: string | null
+  primaryColor: string | null
+  tagline: string | null
+}
+
 export interface ApiError {
   timestamp: string
   status: number
