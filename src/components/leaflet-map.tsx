@@ -28,6 +28,8 @@ interface LeafletMapViewProps {
   traveledPolyline?: LatLng[];
   /** Portion of the route still ahead — rendered as the live route highlight. */
   remainingPolyline?: LatLng[];
+  /** When provided, taps on the map are reported back with the tapped coordinates. */
+  onMapPress?: (coords: LatLng) => void;
   style?: ViewStyle;
 }
 
@@ -47,10 +49,11 @@ export function LeafletMapView({
   markers = [],
   traveledPolyline = [],
   remainingPolyline = [],
+  onMapPress,
   style,
 }: LeafletMapViewProps) {
   const html = useMemo(
-    () => buildHtml(center, zoom, mapType, markers, traveledPolyline, remainingPolyline),
+    () => buildHtml(center, zoom, mapType, markers, traveledPolyline, remainingPolyline, Boolean(onMapPress)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       center.latitude,
@@ -60,6 +63,7 @@ export function LeafletMapView({
       JSON.stringify(markers),
       JSON.stringify(traveledPolyline),
       JSON.stringify(remainingPolyline),
+      Boolean(onMapPress),
     ],
   );
 
@@ -72,6 +76,15 @@ export function LeafletMapView({
         javaScriptEnabled
         domStorageEnabled
         scrollEnabled={false}
+        onMessage={(event) => {
+          if (!onMapPress) return;
+          try {
+            const data = JSON.parse(event.nativeEvent.data) as { lat: number; lng: number };
+            onMapPress({ latitude: data.lat, longitude: data.lng });
+          } catch {
+            // ignore malformed messages
+          }
+        }}
       />
     </View>
   );
@@ -84,6 +97,7 @@ function buildHtml(
   markers: LeafletMarker[],
   traveledPolyline: LatLng[],
   remainingPolyline: LatLng[],
+  interactive: boolean,
 ) {
   const markersJs = markers
     .map((m) => {
@@ -117,6 +131,14 @@ function buildHtml(
       ? `L.polyline(${JSON.stringify(remainingPolyline.map((p) => [p.latitude, p.longitude]))}, { color: '#208AEF', weight: 4 }).addTo(map);`
       : '';
 
+  const clickJs = interactive
+    ? `map.on('click', function(e) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ lat: e.latlng.lat, lng: e.latlng.lng }));
+      }
+    });`
+    : '';
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -134,6 +156,7 @@ function buildHtml(
     ${traveledJs}
     ${remainingJs}
     ${markersJs}
+    ${clickJs}
   </script>
 </body>
 </html>`;

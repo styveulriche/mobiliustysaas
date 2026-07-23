@@ -18,6 +18,20 @@ function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
 
+/** Returns the index of the candidate closest to `point`, or -1 if the list is empty. */
+export function nearestIndex(point: LatLng, candidates: LatLng[]): number {
+  let best = -1;
+  let bestDistance = Infinity;
+  candidates.forEach((candidate, index) => {
+    const distance = haversineMeters(point, candidate);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = index;
+    }
+  });
+  return best;
+}
+
 /**
  * Splits an ordered list of stops into the portion already reached by the bus and the
  * portion still ahead, based on which stop the live position is currently closest to.
